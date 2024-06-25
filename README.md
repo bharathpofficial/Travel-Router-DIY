@@ -37,32 +37,36 @@ now you know.
 3. once after you connected sucessfully to the raspberry pi, do the steps.
 
 > `/etc/dhcpcd.conf`
-
-```
-interface eth0
-static ip_address=192.168.34.1/24
-```
+>
+> ```
+> interface eth0
+> static ip_address=192.168.34.1/24
+> ```
+>
 
 **note: Comment out everything else in the file [refer the official write-up [1] for more info].**
 
+
 > `sudo apt-get install isc-dhcp-server`
 
+
+
 > `/etc/dhcp/dhcpd.conf`
-
-Add this to the bottom of the file:
-
-```
-authoritative;
-subnet 192.168.34.0 netmask 255.255.255.0 {
- range 192.168.34.10 192.168.34.250;
- option broadcast-address 192.168.34.255;
- option routers 192.168.34.1;
- default-lease-time 600;
- max-lease-time 7200;
- option domain-name "local-network";
- option domain-name-servers 8.8.8.8, 8.8.4.4;
-}
-```
+>
+> Add this to the bottom of the file:
+>
+> ```
+> authoritative;
+> subnet 192.168.34.0 netmask 255.255.255.0 {
+>  range 192.168.34.10 192.168.34.250;
+>  option broadcast-address 192.168.34.255;
+>  option routers 192.168.34.1;
+>  default-lease-time 600;
+>  max-lease-time 7200;
+>  option domain-name "local-network";
+>  option domain-name-servers 8.8.8.8, 8.8.4.4;
+> }
+> ```
 
 > `/etc/default/isc-dhcp-server`
 >
@@ -70,38 +74,45 @@ subnet 192.168.34.0 netmask 255.255.255.0 {
 >
 > `INTERFACESv4="eth0"`
 
+
+
 > `service isc-dhcp-server start`
 
+
 > `/etc/sysctl.conf`
+>
+> Add this line:
+>
+> `net.ipv4.ip_forward=1`
 
-Add this line:
+> $ vim `isc-server`
+>
+>
+> contents of the file:
+>
+> ```
+> echo Starting DHCP server
+> service isc-dhcp-server start
+>
+> echo Setting NAT routing
+> iptables -t nat -A POSTROUTING -o wlan0 -j MASQUERADE
+> iptables -A FORWARD -i wlan0 -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+> iptables -A FORWARD -i eth0 -o wlan0 -j ACCEPT
+>
+> DEFAULT_IFACE=`route -n | grep -E "^0.0.0.0 .+UG" | awk '{print $8}'`
+> if [ "$DEFAULT_IFACE" != "wlan0" ]
+> then
+>   GW=`route -n | grep -E "^0.0.0.0 .+UG .+wlan0$" | awk '{print $2}'`
+>   echo Setting default route to wlan0 via $GW
+>   route del default $DEFAULT_IFACE
+>   route add default gw $GW wlan0
+> fi
+> ```
 
-`net.ipv4.ip_forward=1`
-
-> vim `isc-server`
-
-contents of the file:
-
-```
-echo Starting DHCP server
-service isc-dhcp-server start
-
-echo Setting NAT routing
-iptables -t nat -A POSTROUTING -o wlan0 -j MASQUERADE
-iptables -A FORWARD -i wlan0 -o eth0 -m state --state RELATED,ESTABLISHED -j ACCEPT
-iptables -A FORWARD -i eth0 -o wlan0 -j ACCEPT
-
-DEFAULT_IFACE=`route -n | grep -E "^0.0.0.0 .+UG" | awk '{print $8}'`
-if [ "$DEFAULT_IFACE" != "wlan0" ]
-then
-  GW=`route -n | grep -E "^0.0.0.0 .+UG .+wlan0$" | awk '{print $2}'`
-  echo Setting default route to wlan0 via $GW
-  route del default $DEFAULT_IFACE
-  route add default gw $GW wlan0
-fi
-```
 
 > sudo bash `isc-server`
+
+
 
 #### Yes VPN Method
 
